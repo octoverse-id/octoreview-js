@@ -1,5 +1,5 @@
 import type { ErrorCode } from "./errorCodes";
-import { redactText } from "./redact";
+import { redactText, redactValue } from "./redact";
 
 /**
  * Every error this SDK throws. Messages never contain the API key, a query string (signatures)
@@ -46,7 +46,8 @@ export class ApiError extends OctoreviewError {
     );
     this.status = init.status;
     this.code = init.code;
-    this.details = init.details ?? {};
+    // Redacted too: a free-form field (details.reason) can carry a signed URL.
+    this.details = redactValue(init.details ?? {}) as Record<string, unknown>;
     this.requestId = init.requestId ?? null;
     this.docUrl = init.docUrl ?? null;
     this.retryable = init.retryable ?? false;
@@ -88,7 +89,15 @@ export class TransportError extends OctoreviewError {
 }
 
 /** A conditional read (`ifNoneMatch`) found the resource unchanged (HTTP 304). */
-export class NotModifiedError extends OctoreviewError {}
+export class NotModifiedError extends OctoreviewError {
+  /** The server's X-Request-ID of the 304 response. */
+  readonly requestId: string | null;
+
+  constructor(message: string, requestId: string | null = null) {
+    super(requestId ? `${message} (request id ${requestId})` : message);
+    this.requestId = requestId;
+  }
+}
 
 /** A success response without the data envelope, or lacking a field this SDK needs. */
 export class MalformedResponseError extends OctoreviewError {

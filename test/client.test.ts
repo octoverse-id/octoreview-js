@@ -142,6 +142,28 @@ describe("retries", () => {
     expect(second).toBe(first);
   });
 
+  it("keeps a retry key when the caller passes clientUploadId: undefined", async () => {
+    const http = new Recorder().push(
+      apiError(503, ErrorCode.STORAGE_UNAVAILABLE),
+      ok("createMediaUpload"),
+    );
+    const result = settle(
+      client(http).media.createUpload("r-1", {
+        kind: "image",
+        contentType: "image/png",
+        sizeBytes: 3,
+        clientUploadId: undefined,
+      }),
+    );
+    await vi.runAllTimersAsync();
+    await result;
+    const keys = http.requests.map(
+      (r) => (JSON.parse(r.body ?? "{}") as { client_upload_id?: string }).client_upload_id,
+    );
+    expect(keys[0]).toMatch(/^[0-9a-f-]{36}$/);
+    expect(keys[1]).toBe(keys[0]);
+  });
+
   it("stops waiting when the call is aborted", async () => {
     const http = new Recorder().push(
       apiError(503, ErrorCode.STORAGE_UNAVAILABLE, {}, { "Retry-After": "10" }),
@@ -269,14 +291,17 @@ describe("results and errors", () => {
   it("carries the ETag, and a conditional read throws NotModifiedError", async () => {
     const http = new Recorder().push(ok("getEntity", { ETag: '"v1"', "X-Request-ID": "req-1" }), {
       status: 304,
+      headers: { "X-Request-ID": "req-304" },
     });
     const c = client(http);
     const entity = await c.entities.get("e-1");
     expect(entity.meta).toEqual({ etag: '"v1"', requestId: "req-1" });
     expect(JSON.stringify(entity)).not.toContain("req-1"); // meta is not a model field
-    await expect(c.entities.get("e-1", { ifNoneMatch: '"v1"' })).rejects.toBeInstanceOf(
-      NotModifiedError,
-    );
+    const notModified = await c.entities
+      .get("e-1", { ifNoneMatch: '"v1"' })
+      .catch((e: unknown) => e);
+    expect(notModified).toBeInstanceOf(NotModifiedError);
+    expect((notModified as NotModifiedError).requestId).toBe("req-304");
     expect(http.last.headers["if-none-match"]).toBe('"v1"');
   });
 
@@ -366,8 +391,12 @@ describe("results and errors", () => {
       apiError(400, "validation_failed"),
     );
     const envelope = http as unknown as { queue: Answer[] };
-    const body = envelope.queue[1]?.body as { error: { message: string } };
+    const body = envelope.queue[1]?.body as {
+      error: { message: string; details: Record<string, unknown> };
+    };
     body.error.message = `bad ocr_live_secret ${signed} /api/v1/media-uploads/tok123`;
+    // A free-form details field (details.reason) can carry a signed URL too, nested or not.
+    body.error.details = { reason: `fetch ${signed}`, nested: [{ key: "ocr_live_secret" }] };
     const c = client(http, { maxAttempts: 1 });
     for (const call of [() => c.entities.get("e-1"), () => c.entities.get("e-1")]) {
       const error = await call().catch((e: unknown) => e);

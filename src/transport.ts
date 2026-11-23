@@ -365,6 +365,7 @@ export class Transport {
     if (status === 304) {
       throw new NotModifiedError(
         `octoreview: ${op.id} is unchanged (ETag ${call?.ifNoneMatch ?? ""})`,
+        meta.requestId,
       );
     }
     if ((status >= 200 && status < 300) || status === acceptStatus) {

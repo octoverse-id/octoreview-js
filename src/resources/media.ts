@@ -42,7 +42,8 @@ export class MediaService extends Service {
     return this.one(
       "createMediaUpload",
       [reviewId],
-      { clientUploadId: globalThis.crypto.randomUUID(), ...params },
+      // After the spread: an explicit `clientUploadId: undefined` must not remove the retry key.
+      { ...params, clientUploadId: params.clientUploadId ?? globalThis.crypto.randomUUID() },
       options,
       MEDIA_UPLOAD_SPEC,
     );
