@@ -33,6 +33,16 @@ contract: install ## Run the offline contract gate against testdata/contract (se
 vendor-contract: ## Refresh testdata/contract from the server (SERVER=<ref or checkout path>, default main; network)
 	@./scripts/vendor-contract.sh $(or $(SERVER),main)
 
+# The published sha-<commit> image of the server's main branch that CI's integration job runs
+# against (docs/versioning.md); the weekly contract-drift workflow runs against :edge.
+SERVER_IMAGE ?= ghcr.io/octoverse-id/octoreview:sha-bfa29155061e89a8f6c07496fa8b820b9e3c7440
+
+integration: build ## Boot SERVER_IMAGE and run the quickstart and the integration suite (needs Docker)
+	@./scripts/integration.sh $(SERVER_IMAGE)
+
+fixtures: build ## Like integration, and refresh testdata/fixtures from the real server (needs Docker)
+	@WRITE_FIXTURES=1 ./scripts/integration.sh $(SERVER_IMAGE)
+
 llms-check: ## Fail when llms.txt links a missing local path (and prove the check can fail)
 	@./scripts/check-llms-txt.sh
 	@./scripts/check-llms-txt-test.sh
@@ -47,9 +57,9 @@ placeholder-check: ## Fail while any bootstrap CI placeholder job remains
 
 check: lint typecheck test contract package-check llms-check ## Fast gate (Node and npm only)
 
-release-check: check placeholder-check ## Full pre-release gate (fails while placeholders remain)
+release-check: check integration placeholder-check ## Full pre-release gate (needs Docker; fails while placeholders remain)
 
 export-rulesets: ## Export the live rulesets into .github/rulesets/ (needs gh with repo admin)
 	@./scripts/export-rulesets.sh
 
-.PHONY: help install lint typecheck build package-check test contract vendor-contract llms-check actionlint placeholder-check check release-check export-rulesets
+.PHONY: help install lint typecheck build package-check test contract vendor-contract integration fixtures llms-check actionlint placeholder-check check release-check export-rulesets

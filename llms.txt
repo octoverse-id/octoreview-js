@@ -1,8 +1,7 @@
 # octoreview-js
 
-> Official JavaScript/TypeScript SDK for Octoreview: multi-tenant reviews, ratings and review media. Part of the octoverse family, modelled on octonomy. Status: the client core and
-> every REST operation are in; uploads, webhooks and the integration suite are next; release line
-> 1 in progress.
+> Official JavaScript/TypeScript SDK for Octoreview: multi-tenant reviews, ratings and review media. Part of the octoverse family, modelled on octonomy. Status: every REST operation,
+> uploads, webhooks and the integration suite are in; no release yet (release line 1 in progress).
 
 Gates: `make check` (fast, toolchain only) and `make release-check` (full). `make help` lists
 every target.
@@ -25,5 +24,8 @@ every target.
 - [Operation table](src/operations.ts): every REST operation, its retry class and parameters
 - [Transport](src/transport.ts): parameter checks, headers, retries and errors
 - [Models](src/models.ts): response interfaces and their decoders
+- [Uploads](src/upload.ts): the media PUT and UploadError; the helpers are in src/resources/media.ts
+- [Webhooks](src/webhooks.ts): signature verification and event decoding
+- [Quickstart](examples/quickstart.mjs): create a review, upload a photo, print the rating and the photo URL
 - [Contract gate](test/contract/contract.test.ts): the checks against the vendored server contract
 - [Vendored contract](testdata/contract/SOURCE): the server commit the contract gate checks against

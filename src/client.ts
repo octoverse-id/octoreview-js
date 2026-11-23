@@ -10,6 +10,8 @@ import { RatingsService } from "./resources/ratings";
 import { ReviewsService } from "./resources/reviews";
 import { SettingsService } from "./resources/settings";
 import { Transport } from "./transport";
+import { Uploader } from "./upload";
+import { WebhooksService } from "./webhooks";
 
 /** Options of `Octoreview.fromEnv()`: everything but what the environment provides. */
 export type FromEnvOptions = Partial<Omit<OctoreviewOptions, "baseUrl" | "apiKey" | "tenantId">>;
@@ -42,6 +44,7 @@ export class Octoreview {
   readonly media: MediaService;
   readonly authors: AuthorsService;
   readonly auditLogs: AuditLogsService;
+  readonly webhooks: WebhooksService;
 
   constructor(options: OctoreviewOptions) {
     const browser = inBrowser();
@@ -94,9 +97,13 @@ export class Octoreview {
     this.ratings = new RatingsService(transport, this.entities);
     this.settings = new SettingsService(transport);
     this.reviews = new ReviewsService(transport);
-    this.media = new MediaService(transport);
+    this.media = new MediaService(
+      transport,
+      new Uploader(options.uploadAdapter, options.maxRetryAfterSeconds ?? 30),
+    );
     this.authors = new AuthorsService(transport);
     this.auditLogs = new AuditLogsService(transport);
+    this.webhooks = new WebhooksService();
   }
 
   /**

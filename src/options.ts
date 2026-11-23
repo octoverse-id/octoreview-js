@@ -27,6 +27,8 @@ export interface OctoreviewOptions {
   maxRetryAfterSeconds?: number;
   /** An axios adapter for API calls (tests, custom transports). */
   adapter?: AxiosAdapter;
+  /** An axios adapter for the media PUT; it must not follow redirects. */
+  uploadAdapter?: AxiosAdapter;
   /**
    * The client refuses to run in a browser, where its service key would be public. Set this only
    * for a trusted context (an internal tool, a test under jsdom); browsers should upload through

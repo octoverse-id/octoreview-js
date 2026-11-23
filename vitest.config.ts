@@ -1,7 +1,8 @@
 import { defineConfig } from "vitest/config";
 
-// Two projects so CI can run them as separate required checks: `unit` (make test) and
-// `contract` (make contract, the offline contract gate against testdata/contract).
+// Projects so CI can run them as separate required checks: `unit` (make test), `contract` (make
+// contract, the offline contract gate against testdata/contract) and `integration` (make
+// integration, against the real server; skipped without OCTOREVIEW_DEV_ENV).
 export default defineConfig({
   test: {
     projects: [
@@ -18,6 +19,13 @@ export default defineConfig({
           name: "contract",
           environment: "node",
           include: ["test/contract/**/*.test.ts"],
+        },
+      },
+      {
+        test: {
+          name: "integration",
+          environment: "node",
+          include: ["test/integration/**/*.test.ts"],
         },
       },
     ],
