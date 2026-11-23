@@ -24,7 +24,7 @@ function client(http: Recorder, options: Partial<OctoreviewOptions> = {}): Octor
   return new Octoreview({
     baseUrl: "https://reviews.example.com",
     apiKey: "ocr_live_secret",
-    tenantId: "mbizmarket",
+    tenantId: "example",
     applicationId: "storefront",
     adapter: http.adapter,
     ...options,

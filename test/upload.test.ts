@@ -80,7 +80,7 @@ class Fake {
     return new Octoreview({
       baseUrl: "https://reviews.example.com",
       apiKey: "ocr_live_secret",
-      tenantId: "mbizmarket",
+      tenantId: "example",
       applicationId: "storefront",
       namespace: { type: "store", id: "s-1" },
       actorId: "admin-7",
@@ -202,7 +202,7 @@ describe("uploads", () => {
     const client = new Octoreview({
       baseUrl: "https://reviews.example.com",
       apiKey: "ocr_live_secret",
-      tenantId: "mbizmarket",
+      tenantId: "example",
       applicationId: "storefront",
       adapter: fake.api.adapter,
       // A PUT that fails before reading the body.

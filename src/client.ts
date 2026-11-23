@@ -31,7 +31,7 @@ function inBrowser(): boolean {
  * The Octoreview client. One instance per service key; it is safe to share.
  *
  * ```ts
- * const client = new Octoreview({ baseUrl: "https://reviews.example.com", apiKey, tenantId: "mbizmarket", applicationId: "storefront" });
+ * const client = new Octoreview({ baseUrl: "https://reviews.example.com", apiKey, tenantId: "example", applicationId: "storefront" });
  * const review = await client.reviews.create({ authorId: user.id, rating: 5, entityType: "product", externalId: "sku-1" });
  * ```
  */
