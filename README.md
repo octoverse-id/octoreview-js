@@ -38,7 +38,7 @@ defaults are `applicationId`, `namespace`, `actorId`, `timeoutMs`, `maxAttempts`
 const client = new Octoreview({
   baseUrl: "https://reviews.example.com",
   apiKey: process.env.OCTOREVIEW_API_KEY!,
-  tenantId: "mbizmarket",
+  tenantId: "example",
   applicationId: "storefront",
   namespace: { type: "store", id: "store-9" },
 });
