@@ -115,5 +115,8 @@ the local backend and the demo seed), copies out `.octoreview-dev.env`, runs
 - pre-moderation, the version guard and revisions;
 - media moderation, erasure, audit logs and health.
 
-It restores the application's settings afterwards. `make fixtures` also saves one response per
-operation into `testdata/fixtures`.
+It restores the application's settings afterwards, then runs again with media on the RustFS S3
+emulator, as the server's compose `s3` profile runs it (spec section 19): the emulator pinned by
+the same digest, the bucket created by the image's own `compose-s3-init.py`, and the server
+signing URLs for the host this SDK reaches, so uploads go through presigned S3 PUTs.
+`make fixtures` also saves one response per operation into `testdata/fixtures` (local run).

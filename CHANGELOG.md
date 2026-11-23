@@ -9,6 +9,8 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- `make integration` (and CI's `integration` job) also runs the quickstart and the suite with
+  media on the RustFS S3 emulator, as the server's compose `s3` profile does.
 - The client core (`@octoverse-id/octoreview`, TypeScript strict, axios, ESM and CommonJS,
   Node 20+): `new Octoreview()` and `Octoreview.fromEnv()`, client defaults (application,
   namespace, actor, timeout, retry bound) and per-call options (application, namespace or
