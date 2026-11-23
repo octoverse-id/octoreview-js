@@ -14,9 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 # Every job name below is a final required check in the `main: require PR + green CI` ruleset
-# (.github/rulesets/main-require-pr-green-ci.json). The integration job is still a bootstrap
-# stand-in that passes so the ruleset could be set once; it becomes the real job with the
-# integration suite. `make release-check` fails while any stand-in remains.
+# (.github/rulesets/main-require-pr-green-ci.json). `make release-check` runs the same gates.
 
 jobs:
   static:
@@ -79,9 +77,17 @@ jobs:
         run: make contract
 
   integration:
-    # octoreview:placeholder
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 20
     steps:
-      - name: Bootstrap placeholder
-        run: echo "octoreview:placeholder - 'integration' becomes a real job in its feature PR"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: make install
+      - name: Quickstart and the integration suite against the pinned server image
+        # SERVER_IMAGE in the Makefile names a published sha-<commit> of the server's main branch
+        # (docs/versioning.md); the weekly contract-drift workflow also runs against :edge.
+        run: make integration

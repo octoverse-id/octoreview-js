@@ -12,14 +12,6 @@ import { Recorder } from "../support/recorder";
 // every request and every response model are checked against the vendored server contract in
 // testdata/contract, in both directions (server docs/spec.md section 18).
 
-/** Surface helpers that arrive with the next PR (uploads and webhooks); none may exist yet. */
-const PENDING_HELPERS = [
-  "media.uploadFile",
-  "media.uploadBytes",
-  "media.uploadStream",
-  "webhooks.verify",
-];
-
 const RETRY_BEHAVIOR: Record<string, string> = {
   safe: "a read: retried on timeouts, 503 and 429, honoring Retry-After",
   idempotent: "repeats to the same state: retried like a read",
@@ -319,11 +311,7 @@ describe("the surface", () => {
       new Octoreview({ baseUrl: "https://r.example.com", apiKey: "ocr_x", tenantId: "t" }),
     );
     for (const name of named) {
-      if (PENDING_HELPERS.includes(name)) {
-        expect(declared, `${name} exists now: remove it from PENDING_HELPERS`).not.toContain(name);
-      } else {
-        expect(declared, `the surface names ${name}`).toContain(name);
-      }
+      expect(declared, `the surface names ${name}`).toContain(name);
     }
     for (const name of declared) {
       expect(named, `the client declares ${name}, which the surface does not name`).toContain(name);

@@ -22,6 +22,19 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 - Typed errors (`ApiError` with the 39 `ErrorCode` values, `TransportError`,
   `NotModifiedError`, `MalformedResponseError`, `ConfigurationError`) that never carry axios's
   error or config, the key, a signature or a media token.
+- Uploads: `media.uploadFile()`, `uploadBytes()` and `uploadStream()` (intent, PUT, complete;
+  Node). The PUT uses a separate axios instance with only the signed headers and an explicit
+  `Content-Length`, follows no redirects, retries on the same URL until it expires (a stream
+  factory is reopened per attempt), honors an `AbortSignal`, and frees the slot after a terminal
+  failure unless another call completed the upload. `UploadError` reports the stage, ids,
+  request ids and the provider's code with a fix, never the signed URL.
+- Webhooks: `verifyWebhook()` / `client.webhooks.verify()` (WebCrypto, constant time, 300 s
+  tolerance) and `WebhookEvent` with typed payloads (`review()`, `media()`, `ratingChanged()`,
+  `authorErased()`), checked against the vendored `events.md`.
+- `examples/quickstart.mjs`, the integration suite (`make integration`) against the pinned server
+  image, fixtures captured from it (`make fixtures`), the real `integration` CI job, and the
+  weekly `contract-drift` workflow.
+- `ApiError` redacts every string in `details`; `NotModifiedError` carries the request id.
 - The offline contract gate against the vendored server contract (`make contract`), including
   each response model against its contract schema; real `static`, `test (20)`, `test (22)`,
   `test (24)` and `contract` CI jobs, and `make package-check` (both module formats load; npm

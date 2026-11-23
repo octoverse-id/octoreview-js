@@ -70,6 +70,63 @@ Every method of the server's [SDK surface](https://github.com/octoverse-id/octor
 Models are camelCase with `Date` timestamps; single results carry a non-enumerable `meta`
 (`etag`, `requestId`), and lists return a `Page` (`items`, `pagination`, `meta`).
 
+## Uploads
+
+```ts
+const media = await client.media.uploadFile(review.id, "/path/photo.jpg");     // type and size from the file
+const photo = await client.media.uploadBytes(review.id, bytes, "image/png");
+const video = await client.media.uploadStream(review.id, () => createReadStream(path), "video/mp4", size, {
+  onProgress: (sent, total) => console.log(`${sent}/${total}`),
+});
+```
+
+Each runs intent, PUT and complete, and returns the ready media (Node only).
+- **The PUT** goes to the signed `upload.url` with only the headers the server returned and an
+  explicit `Content-Length`, through a separate axios instance (`uploadAdapter`). It never sends
+  the service key, tenant or namespace headers, follows no redirects, and has no total timeout;
+  `callOptions.signal` cancels it.
+- **Retries:** a failed PUT is retried on the same URL until it expires. A stream factory
+  (`() => stream`) is reopened for each attempt; a plain stream cannot rewind, so it is tried once.
+  `complete` retries on 503, `complete_in_progress` and `upload_changed`.
+- **Failures** throw `UploadError` with `stage` (`intent`, `put` or `complete`), the media and
+  review ids, `uploadExpiresAt`, `requestIds` and, for a failed PUT, the storage provider's
+  `providerCode` and a `fix`; never the signed URL. A terminal PUT failure frees the slot unless
+  another call with the same client upload id completed the upload.
+
+## Webhooks
+
+```ts
+import { EventType, InvalidSignatureError, verifyWebhook } from "@octoverse-id/octoreview";
+
+app.post("/webhooks/octoreview", express.raw({ type: "application/json" }), async (req, res) => {
+  let event;
+  try {
+    event = await verifyWebhook(req.body, req.get("X-Octoreview-Signature") ?? "", secret);
+  } catch (error) {
+    if (error instanceof InvalidSignatureError) return res.sendStatus(401);
+    throw error;
+  }
+  if (event.type === EventType.ENTITY_RATING_CHANGED) await store.replaceSummary(event.ratingChanged());
+  if (event.type === EventType.AUTHOR_ERASED) await store.forgetAuthor(event.authorErased().authorId);
+  res.sendStatus(204);
+});
+```
+
+`verifyWebhook()` (also `client.webhooks.verify()`) checks `X-Octoreview-Signature` against the
+raw body in constant time (WebCrypto) with a 300 s tolerance, then decodes the event. Pass the
+body exactly as received, and deduplicate on `event.id`: delivery is at least once.
+
+## Quickstart
+
+With the server's compose stack running (`make up && make dev-env` in the server repository):
+
+```sh
+make build && node examples/quickstart.mjs path/to/.octoreview-dev.env
+```
+
+It creates a review, uploads a photo, and prints the review id, the rating summary and the photo
+URL. CI runs it against the pinned server image.
+
 ## Errors
 
 Every error extends `OctoreviewError`:
@@ -81,6 +138,8 @@ Every error extends `OctoreviewError`:
 | `NotModifiedError` | a conditional read (`ifNoneMatch`) found the resource unchanged |
 | `MalformedResponseError` | a success response lacks a field this SDK needs (`requestId`) |
 | `ConfigurationError` | a missing or invalid option or parameter, or a browser without `dangerouslyAllowBrowser` |
+| `UploadError` | an upload helper failed: `stage`, ids, `requestIds`, `providerCode`, `fix` |
+| `InvalidSignatureError` | a webhook signature is missing, wrong or outside the tolerance |
 
 Messages never contain the API key, a query string (signatures) or a media token, and no error
 carries axios's own error or request config (which hold the `Authorization` header).
@@ -105,7 +164,8 @@ honor `Retry-After` up to `maxRetryAfterSeconds` (default 3 attempts, 30 s); an 
 Read [`AGENTS.md`](AGENTS.md) first (humans too): it holds the rules, gates and development
 pipeline. `make help` lists the targets; `make check` is the fast gate, and it includes the
 offline contract gate against the vendored server contract
-([`docs/architecture.md`](docs/architecture.md)).
+([`docs/architecture.md`](docs/architecture.md)). `make integration` runs the quickstart and the
+integration suite against the pinned server image (needs Docker).
 
 ## License
 

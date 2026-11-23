@@ -49,4 +49,25 @@ export type {
   VersionGuard,
 } from "./resources/reviews";
 export type { PutSettingsParams } from "./resources/settings";
+export {
+  UploadError,
+  type UploadErrorInit,
+  type UploadOptions,
+  type UploadSource,
+  type UploadStage,
+} from "./upload";
 export { VERSION } from "./version";
+export {
+  type AuthorErasedEvent,
+  DEFAULT_TOLERANCE_SECONDS,
+  EventType,
+  InvalidSignatureError,
+  type MediaEvent,
+  type RatingChangedEvent,
+  type ReviewEvent,
+  SIGNATURE_HEADER,
+  type VerifyOptions,
+  verifyWebhook,
+  WebhookEvent,
+  WebhooksService,
+} from "./webhooks";
