@@ -140,7 +140,7 @@ async function meter(
   size: number,
   progress: ((sent: number, total: number) => void) | undefined,
 ): Promise<Readable> {
-  const { Readable: NodeReadable, Transform } = await import("node:stream");
+  const { Readable: NodeReadable, Transform, pipeline } = await import("node:stream");
   const input =
     source instanceof NodeReadable
       ? source
@@ -158,9 +158,18 @@ async function meter(
         done();
       }
     },
+    flush(done) {
+      // Content-Length promised `size` bytes: a short source must fail the PUT, not leave the
+      // storage server (and this upload, which has no total timeout) waiting for the rest.
+      done(
+        sent < size ? new Error(`the upload source ended after ${sent} of ${size} bytes`) : null,
+      );
+    },
   });
-  input.on("error", (error) => limited.destroy(error));
-  return input.pipe(limited);
+  // pipeline, not pipe: destroying either end (a failed or aborted PUT) destroys the other, so the
+  // source file or a wrapped web stream is closed rather than left open and paused.
+  pipeline(input, limited, () => undefined);
+  return limited;
 }
 
 /**

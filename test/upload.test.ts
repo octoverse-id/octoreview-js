@@ -181,6 +181,40 @@ describe("uploads", () => {
     expect(fake.puts).toHaveLength(1);
   });
 
+  it("fails a source that ends before the declared size instead of hanging", async () => {
+    const fake = new Fake();
+    fake.completeAnswer = apiError(409, ErrorCode.UPLOAD_NOT_FOUND);
+    const { error } = await settle(
+      fake
+        .client()
+        .media.uploadStream("r-1", () => Readable.from([Buffer.from("ab")]), "image/png", 5),
+    );
+    expect(error).toBeInstanceOf(UploadError);
+    expect((error as UploadError).stage).toBe("put");
+    expect((error as UploadError).message).toContain("ended after 2 of 5 bytes");
+  });
+
+  it("closes the source when the PUT fails", async () => {
+    const fake = new Fake();
+    fake.completeAnswer = apiError(409, ErrorCode.UPLOAD_NOT_FOUND);
+    const source = new Readable({ read() {} }); // never ends on its own
+    source.push(Buffer.from("abc"));
+    const client = new Octoreview({
+      baseUrl: "https://reviews.example.com",
+      apiKey: "ocr_live_secret",
+      tenantId: "mbizmarket",
+      applicationId: "storefront",
+      adapter: fake.api.adapter,
+      // A PUT that fails before reading the body.
+      uploadAdapter: async () => {
+        throw new Error("socket hang up");
+      },
+    });
+    const { error } = await settle(client.media.uploadStream("r-1", source, "image/png", 10));
+    expect((error as UploadError).stage).toBe("put");
+    await vi.waitFor(() => expect(source.destroyed, "the source must be closed").toBe(true));
+  });
+
   it("never retries past the URL's expiry", async () => {
     const fake = new Fake();
     fake.expiresAt = new Date(Date.now() + 10_000);
