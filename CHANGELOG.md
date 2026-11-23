@@ -9,6 +9,23 @@ adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
 ### Added
 
+- The client core (`@octoverse-id/octoreview`, TypeScript strict, axios, ESM and CommonJS,
+  Node 20+): `new Octoreview()` and `Octoreview.fromEnv()`, client defaults (application,
+  namespace, actor, timeout, retry bound) and per-call options (application, namespace or
+  `"global"`, `includeGlobal`, actor, `ifNoneMatch`, request id, `AbortSignal`). It refuses to
+  run in a browser unless `dangerouslyAllowBrowser` is set.
+- Every operation of the server's SDK surface as `client.<resource>.<method>()` with camelCase
+  params and models (`Date` timestamps, `meta` with the ETag and request id), plus `ratings.get`
+  by entity key. Unknown, misplaced or missing parameters throw before anything is sent.
+- Retries by retry class with a bounded `Retry-After`; `createUpload` fills in
+  `clientUploadId`; `complete` retries its documented conflicts.
+- Typed errors (`ApiError` with the 39 `ErrorCode` values, `TransportError`,
+  `NotModifiedError`, `MalformedResponseError`, `ConfigurationError`) that never carry axios's
+  error or config, the key, a signature or a media token.
+- The offline contract gate against the vendored server contract (`make contract`), including
+  each response model against its contract schema; real `static`, `test (20)`, `test (22)`,
+  `test (24)` and `contract` CI jobs, and `make package-check` (both module formats load; npm
+  pack ships `dist/` only).
 - Repository bootstrap: Apache-2.0 license, governance files (AGENTS.md, CONTRIBUTING,
   SECURITY, Code of Conduct), issue forms, PR template, Dependabot with auto-merge for minor and
   patch updates, `llms.txt` with a link check, rulesets mirror and export script, and a CI

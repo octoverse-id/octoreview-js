@@ -35,11 +35,11 @@ other, because a record that omits a ruleset is worse than no record. Rename one
 
 ## What is protected
 
-| File | Target | Effect |
-| --- | --- | --- |
-| `main-require-pr-green-ci.json` | `~DEFAULT_BRANCH` | Every change goes through a PR, and cannot merge until all 6 CI checks pass (the rule octonomy added after Dependabot merged to `main` before CI finished). |
-| `release-tags-never-move.json` | `refs/tags/v*` | A released tag can never be re-pointed or force-pushed, **by anyone including admins**. |
-| `release-tags-deletion-is-admin-only.json` | `refs/tags/v*` | Deletion is restricted to repo admins. This is the escape hatch: without it, a wrong-commit tag could never be removed and the version would be burned (octonomy #112). |
+| File                                       | Target            | Effect                                                                                                                                                                  |
+| ------------------------------------------ | ----------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `main-require-pr-green-ci.json`            | `~DEFAULT_BRANCH` | Every change goes through a PR, and cannot merge until all 6 CI checks pass (the rule octonomy added after Dependabot merged to `main` before CI finished).             |
+| `release-tags-never-move.json`             | `refs/tags/v*`    | A released tag can never be re-pointed or force-pushed, **by anyone including admins**.                                                                                 |
+| `release-tags-deletion-is-admin-only.json` | `refs/tags/v*`    | Deletion is restricted to repo admins. This is the escape hatch: without it, a wrong-commit tag could never be removed and the version would be burned (octonomy #112). |
 
 Tag **creation is deliberately unrestricted**, as in octonomy: the wrong-commit case is caught
 by the release workflow's merge check (`scripts/check-release-merge.sh` once it lands), and
