@@ -37,11 +37,12 @@ vendor-contract: ## Refresh testdata/contract from the server (SERVER=<ref or ch
 # against (docs/versioning.md); the weekly contract-drift workflow runs against :edge.
 SERVER_IMAGE ?= ghcr.io/octoverse-id/octoreview:sha-bfa29155061e89a8f6c07496fa8b820b9e3c7440
 
-integration: build ## Boot SERVER_IMAGE and run the quickstart and the integration suite (needs Docker)
-	@./scripts/integration.sh $(SERVER_IMAGE)
+integration: build ## Run the quickstart and the integration suite against SERVER_IMAGE, with local and S3 media (needs Docker)
+	@./scripts/integration.sh $(SERVER_IMAGE) local
+	@./scripts/integration.sh $(SERVER_IMAGE) s3
 
 fixtures: build ## Like integration, and refresh testdata/fixtures from the real server (needs Docker)
-	@WRITE_FIXTURES=1 ./scripts/integration.sh $(SERVER_IMAGE)
+	@WRITE_FIXTURES=1 ./scripts/integration.sh $(SERVER_IMAGE) local
 
 llms-check: ## Fail when llms.txt links a missing local path (and prove the check can fail)
 	@./scripts/check-llms-txt.sh
