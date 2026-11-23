@@ -14,9 +14,9 @@ concurrency:
   cancel-in-progress: true
 
 # Every job name below is a final required check in the `main: require PR + green CI` ruleset
-# (.github/rulesets/main-require-pr-green-ci.json). Jobs marked octoreview:placeholder are
-# bootstrap stand-ins that pass so the ruleset could be set once; each is replaced by the real
-# job in its feature PR. `make release-check` fails while any placeholder remains.
+# (.github/rulesets/main-require-pr-green-ci.json). The integration job is still a bootstrap
+# stand-in that passes so the ruleset could be set once; it becomes the real job with the
+# integration suite. `make release-check` fails while any stand-in remains.
 
 jobs:
   static:
@@ -32,25 +32,51 @@ jobs:
           "$(go env GOPATH)/bin/actionlint" -color
       - name: Check llms.txt links
         run: make llms-check
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "20"
+          cache: npm
+      - name: Install dependencies
+        run: make install
+      - name: Lint (biome)
+        run: make lint
+      - name: Type-check (tsc, strict)
+        run: make typecheck
+      - name: Build and load both module formats on the oldest supported Node
+        run: make package-check
 
   test:
-    # octoreview:placeholder
+    name: test (${{ matrix.node-version }})
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     strategy:
+      fail-fast: false
       matrix:
         node-version: ["20", "22", "24"]
     steps:
-      - name: Bootstrap placeholder
-        run: echo "octoreview:placeholder - 'test' becomes a real job in its feature PR"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ matrix.node-version }}
+          cache: npm
+      - name: Install dependencies
+        run: make install
+      - name: Unit tests
+        run: make test
 
   contract:
-    # octoreview:placeholder
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     steps:
-      - name: Bootstrap placeholder
-        run: echo "octoreview:placeholder - 'contract' becomes a real job in its feature PR"
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "22"
+          cache: npm
+      - name: Install dependencies
+        run: make install
+      - name: Contract gate (offline, against testdata/contract)
+        run: make contract
 
   integration:
     # octoreview:placeholder

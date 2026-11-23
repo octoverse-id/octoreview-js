@@ -10,3 +10,13 @@ code-review/*
 .DS_Store
 .idea/
 .vscode/
+
+# Node
+node_modules/
+dist/
+coverage/
+*.tsbuildinfo
+
+# Local agent tooling state
+.omc/
+.gstack/
