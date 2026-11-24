@@ -189,7 +189,7 @@ const CALLS: Record<string, Call> = {
     ),
   rejectReviewRevision: (c, o) => c.reviews.rejectRevision(v("review_id"), pick("revision_id"), o),
   listReviewMedia: (c, o) =>
-    c.media.list(v("review_id"), pick("author_id", "include_unpublished"), o),
+    c.media.list(v("review_id"), pick("author_id", "include_unpublished", "limit", "offset"), o),
   createMediaUpload: (c, o) =>
     c.media.createUpload(
       v("review_id"),

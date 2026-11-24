@@ -8,7 +8,7 @@ npm install @octoverse-id/octoreview
 ```
 
 TypeScript strict, axios, ESM and CommonJS, Node 20 or newer. No release yet: `0.1.0` ships
-with the server's `1.0.0-rc.1` ([`docs/versioning.md`](docs/versioning.md)).
+with the server's first `1.0.0` release candidate ([`docs/versioning.md`](docs/versioning.md)).
 
 ## Usage
 
