@@ -108,7 +108,13 @@ describe.skipIf(!devEnv)("the main flows against a real server", () => {
     const listed = await c.reviews.list({ entityId: entity.id, hasMedia: true });
     expect(listed.pagination.count).toBe(1);
     expect(listed.items[0]?.media).toHaveLength(2);
-    expect(await c.media.list(review.id)).toHaveLength(2);
+    const media = await c.media.list(review.id);
+    expect([media.pagination.count, media.items.length]).toEqual([2, 2]);
+    const second = await c.media.list(review.id, { limit: 1, offset: 1 });
+    expect([second.pagination.limit, second.items.map((m) => m.id)]).toEqual([
+      1,
+      [media.items[1]?.id],
+    ]);
 
     // Pre-moderation: a new review waits; the version guard protects publishing.
     const original = settingsOf(await c.settings.get());

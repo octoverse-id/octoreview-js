@@ -342,7 +342,14 @@ export const OPERATIONS: Readonly<Record<string, Operation>> = {
     retry: "safe",
     jsMethod: "media.list",
     required: ["review_id"],
-    optional: ["application_id", "include_global", "author_id", "include_unpublished"],
+    optional: [
+      "application_id",
+      "include_global",
+      "author_id",
+      "include_unpublished",
+      "limit",
+      "offset",
+    ],
     body: [],
   },
   createMediaUpload: {

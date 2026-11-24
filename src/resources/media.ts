@@ -1,6 +1,13 @@
 import { ErrorCode } from "../errorCodes";
 import { ApiError, OctoreviewError } from "../errors";
-import { MEDIA_UPLOAD_SPEC, type Media, type MediaUpload, SPECS, type WithMeta } from "../models";
+import {
+  MEDIA_UPLOAD_SPEC,
+  type Media,
+  type MediaUpload,
+  type Page,
+  SPECS,
+  type WithMeta,
+} from "../models";
 import type { CallOptions } from "../options";
 import type { Transport } from "../transport";
 import {
@@ -27,9 +34,15 @@ const CONTENT_TYPES: Readonly<Record<string, string>> = {
 };
 
 /** media.list: as reviews.get, the author's own or a moderator's view. */
+/**
+ * media.list: a review's media on the author path or as a moderator. `limit`/`offset` page the
+ * list (server default 20, at most 100 per page).
+ */
 export interface ListMediaParams {
   authorId?: string;
   includeUnpublished?: boolean;
+  limit?: number;
+  offset?: number;
 }
 
 /**
@@ -249,8 +262,16 @@ export class MediaService extends Service {
     }
   }
 
-  list(reviewId: string, params: ListMediaParams = {}, options?: CallOptions): Promise<Media[]> {
-    return this.many("listReviewMedia", [reviewId], params, options, SPECS.Media);
+  /**
+   * One page of a review's media in position order. Unlike the review's embedded list it is not
+   * capped: `pagination.count` is the total, and `offset` walks the rest.
+   */
+  list(
+    reviewId: string,
+    params: ListMediaParams = {},
+    options?: CallOptions,
+  ): Promise<Page<Media>> {
+    return this.page("listReviewMedia", [reviewId], params, options, SPECS.Media);
   }
 
   /** Reserves a media slot and returns where to PUT the bytes. */
