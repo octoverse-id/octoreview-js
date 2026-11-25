@@ -47,9 +47,12 @@ documented, against real merge commits.
   OIDC token npm accepts.
 - **npm trusted publisher** (npmjs.com, package `@octoverse-id/octoreview`, Settings, Trusted
   publishing): GitHub Actions, repository `octoverse-id/octoreview-js`, workflow `publish.yml`,
-  environment `npm`. Add it shortly before the first tag: npm drops a configuration whose first
-  publish does not succeed within two days. Trusted publishing needs npm 11.5.1 or later, which the
-  workflow installs.
+  environment `npm`, with **Allow npm publish** ticked. An entry carries two permissions, npm
+  publish and npm stage publish, and a new one may start with only the stage permission, while
+  `publish.yml` runs `npm publish`. Without it the publish step fails with `E403 OIDC permission
+  denied for this action`; tick the box and re-run the failed job (no new tag). Add the entry
+  shortly before the first tag: npm drops a configuration whose first publish does not succeed
+  within two days. Trusted publishing needs npm 11.5.1 or later, which the workflow installs.
 
 ## Rehearsing a release
 
