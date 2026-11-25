@@ -32,9 +32,10 @@ Releases of octoreview-js are cut from `main` through a dedicated PR and publish
    dist-tag `latest` for `X.Y.Z` and `next` for `X.Y.Z-rc.N`, and waits until the registry serves
    the version. It creates the GitHub release from the CHANGELOG section
    (`scripts/release-notes.sh`), marked pre-release for `-rc.N`.
-5. A failed run is re-run from the Actions tab, never re-tagged. npm never accepts the same version
-   twice, even after an unpublish, so if the tag or the published package is wrong the version is
-   burned and the next one is cut.
+5. A failed run is re-run from the Actions tab, never re-tagged. A re-run skips the upload when npm
+   already has the version from the same commit (its `gitHead`), and stops when it came from any
+   other commit. npm never accepts the same version twice, even after an unpublish, so if the tag
+   or the published package is wrong the version is burned and the next one is cut.
 
 `make release-tooling-check` (part of `make check`) proves the three scripts pass and fail as
 documented, against real merge commits.

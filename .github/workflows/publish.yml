@@ -148,18 +148,35 @@ jobs:
       - name: Publish to npm
         # `latest` for X.Y.Z, `next` for X.Y.Z-rc.N. A rehearsal packs and validates everything
         # and uploads nothing (--dry-run).
+        #
+        # npm never accepts a version twice, so a re-run after an upload that went through (the
+        # wait below timed out, or the response was lost) must not upload again. It skips the
+        # upload when the registry already has this version and it was published from this
+        # commit (`gitHead`, which npm records from the checkout); a version published from any
+        # other commit stops the run (docs/release.md: the version is burned).
         env:
           EVENT: ${{ github.event_name }}
           PRERELEASE: ${{ steps.params.outputs.prerelease }}
+          VERSION: ${{ steps.params.outputs.version }}
         run: |
           set -euo pipefail
           tag=latest
           [ "$PRERELEASE" = true ] && tag=next
-          if [ "$EVENT" = push ]; then
-            npm publish --access public --provenance --tag "$tag"
-          else
+          if [ "$EVENT" != push ]; then
             npm publish --access public --tag "$tag" --dry-run
+            exit 0
           fi
+          published=$(npm view "@octoverse-id/octoreview@$VERSION" version 2>/dev/null || true)
+          if [ "$published" = "$VERSION" ]; then
+            head=$(npm view "@octoverse-id/octoreview@$VERSION" gitHead 2>/dev/null || true)
+            if [ "$head" = "$GITHUB_SHA" ]; then
+              echo "npm already has $VERSION from $GITHUB_SHA; not uploading again"
+              exit 0
+            fi
+            echo "::error::npm already has $VERSION, published from ${head:-an unknown commit}, not $GITHUB_SHA; burn the version and cut the next one"
+            exit 1
+          fi
+          npm publish --access public --provenance --tag "$tag"
 
       - name: Wait until the registry serves the version
         if: github.event_name == 'push'
@@ -197,6 +214,11 @@ jobs:
         run: |
           set -euo pipefail
           ./scripts/release-notes.sh "$VERSION" >"$RUNNER_TEMP/notes.md"
+          # A re-run after the release was created finds it and stops here.
+          if gh release view "v$VERSION" >/dev/null 2>&1; then
+            echo "the GitHub release v$VERSION already exists"
+            exit 0
+          fi
           flags=(--verify-tag --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md")
           [ "$PRERELEASE" = true ] && flags+=(--prerelease)
           gh release create "v$VERSION" "${flags[@]}"
