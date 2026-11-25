@@ -1,0 +1,202 @@
+name: Publish
+
+# Publishes a release of @octoverse-id/octoreview (docs/release.md): it proves the tag names the
+# release merge, runs `npm publish` through npm trusted publishing (an OIDC token, no stored npm
+# token; provenance is attached), waits until the registry serves the version, and creates the
+# GitHub release from the CHANGELOG section. The gates mirror the server's publish-image.yml.
+#
+# Two jobs: `publish` holds id-token: write and runs in the `npm` environment the trusted
+# publisher names, and `github-release` alone may write to the repository.
+#
+# workflow_dispatch from main rehearses it (docs/release.md, "Rehearsing a release"): every gate
+# except the two only a release commit can pass, and nothing is published.
+
+on:
+  push:
+    # Exact vX.Y.Z and vX.Y.Z-rc.N; any other tag shape is not a release.
+    tags:
+      - "v[0-9]+.[0-9]+.[0-9]+"
+      - "v[0-9]+.[0-9]+.[0-9]+-rc.[0-9]+"
+  workflow_dispatch:
+
+# No workflow-level permissions: the job asks for exactly what it needs.
+permissions: {}
+
+# One group for every release, never cancelled: a cancelled run would leave a tag half published,
+# and two releases racing could move `latest` backward.
+concurrency:
+  group: publish
+  cancel-in-progress: false
+
+jobs:
+  publish:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    # The npm trusted publisher names this environment, and the environment deploys only v* tags
+    # (docs/release.md). A rehearsal runs without it, so npm refuses it a publish token.
+    environment: ${{ github.event_name == 'push' && 'npm' || '' }}
+    permissions:
+      contents: read
+      actions: read # read CI's conclusion for the tagged commit
+      id-token: write # npm trusted publishing (OIDC) and provenance
+    outputs:
+      version: ${{ steps.params.outputs.version }}
+      prerelease: ${{ steps.params.outputs.prerelease }}
+    steps:
+      - name: Reject a rehearsal from any ref but main
+        if: github.event_name == 'workflow_dispatch'
+        env:
+          REF: ${{ github.ref }}
+        run: |
+          if [ "$REF" != "refs/heads/main" ]; then
+            echo "::error::rehearse from main, not $REF"
+            exit 1
+          fi
+
+      - name: Require a green commit on main
+        # Before the checkout: nothing from the tagged tree runs until the commit is vetted.
+        # Ancestry proves the code went through main (and so through review); a successful CI
+        # push run on main proves that exact commit is green. event=push&branch=main matters:
+        # a pull_request run for the same head sha built GitHub's merge ref, not this tree.
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          set -euo pipefail
+          status=$(gh api "repos/$GITHUB_REPOSITORY/compare/main...$GITHUB_SHA" --jq '.status')
+          case "$status" in
+            behind | identical) ;;
+            *)
+              echo "::error::$GITHUB_SHA is not on main (compare status: $status); release tags go on merged commits"
+              exit 1
+              ;;
+          esac
+          green=$(gh api \
+            "repos/$GITHUB_REPOSITORY/actions/workflows/ci.yml/runs?head_sha=$GITHUB_SHA&status=success&event=push&branch=main" \
+            --jq '.total_count')
+          if [ "${green:-0}" -lt 1 ]; then
+            echo "::error::no successful CI run on main for $GITHUB_SHA; tag the merge commit after its CI passes"
+            exit 1
+          fi
+          echo "$GITHUB_SHA is on main ($status) with $green successful CI run(s) on main"
+
+      - name: Check out the commit being published
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 0 # check-release-merge.sh reads the first parent
+
+      - name: Resolve the version
+        id: params
+        env:
+          EVENT: ${{ github.event_name }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT" = push ]; then
+            version=${GITHUB_REF_NAME#v}
+            notes=$version
+          else
+            version=$(node -p 'require("./package.json").version')
+            # A rehearsal extracts [Unreleased], or right after a release (when it is empty) the
+            # newest released section.
+            notes=Unreleased
+            if ! ./scripts/release-notes.sh Unreleased >/dev/null 2>&1; then
+              notes=$(sed -nE 's/^## \[([0-9][^]]*)\] - .*/\1/p' CHANGELOG.md | head -n1)
+            fi
+          fi
+          prerelease=false
+          [[ $version == *-rc.* ]] && prerelease=true
+          {
+            echo "version=$version"
+            echo "notes=$notes"
+            echo "prerelease=$prerelease"
+          } >>"$GITHUB_OUTPUT"
+          echo "version $version (notes: $notes, prerelease: $prerelease, event: $EVENT)"
+
+      - name: Assert the version stamps name the tag
+        if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.params.outputs.version }}
+        run: ./scripts/version-check.sh "$VERSION"
+
+      - name: Assert the tag names the release merge, not a later commit
+        if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.params.outputs.version }}
+        run: ./scripts/check-release-merge.sh "$VERSION" "$GITHUB_SHA"
+
+      - name: Extract the release notes
+        env:
+          NOTES: ${{ steps.params.outputs.notes }}
+        run: |
+          set -euo pipefail
+          ./scripts/release-notes.sh "$NOTES" | tee "$RUNNER_TEMP/notes.md"
+
+      - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: "24"
+          registry-url: https://registry.npmjs.org
+
+      - name: Install the npm that trusted publishing needs
+        # Trusted publishing needs npm 11.5.1 or later; pin one rather than take what Node bundles.
+        run: npm install -g npm@11.21.3 && npm --version
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build and load both module formats, and check what npm pack ships
+        run: make package-check
+
+      - name: Publish to npm
+        # `latest` for X.Y.Z, `next` for X.Y.Z-rc.N. A rehearsal packs and validates everything
+        # and uploads nothing (--dry-run).
+        env:
+          EVENT: ${{ github.event_name }}
+          PRERELEASE: ${{ steps.params.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          tag=latest
+          [ "$PRERELEASE" = true ] && tag=next
+          if [ "$EVENT" = push ]; then
+            npm publish --access public --provenance --tag "$tag"
+          else
+            npm publish --access public --tag "$tag" --dry-run
+          fi
+
+      - name: Wait until the registry serves the version
+        if: github.event_name == 'push'
+        env:
+          VERSION: ${{ steps.params.outputs.version }}
+        run: |
+          set -euo pipefail
+          for attempt in $(seq 1 10); do
+            if [ "$(npm view "@octoverse-id/octoreview@$VERSION" version 2>/dev/null)" = "$VERSION" ]; then
+              echo "npm serves @octoverse-id/octoreview@$VERSION"
+              exit 0
+            fi
+            echo "attempt $attempt: npm does not serve $VERSION yet"
+            sleep 15
+          done
+          echo "::error::npm did not serve @octoverse-id/octoreview@$VERSION"
+          exit 1
+
+  github-release:
+    needs: publish
+    if: github.event_name == 'push'
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: write # create the GitHub release
+    steps:
+      - name: Check out the tag
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      - name: Create the GitHub release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VERSION: ${{ needs.publish.outputs.version }}
+          PRERELEASE: ${{ needs.publish.outputs.prerelease }}
+        run: |
+          set -euo pipefail
+          ./scripts/release-notes.sh "$VERSION" >"$RUNNER_TEMP/notes.md"
+          flags=(--verify-tag --title "v$VERSION" --notes-file "$RUNNER_TEMP/notes.md")
+          [ "$PRERELEASE" = true ] && flags+=(--prerelease)
+          gh release create "v$VERSION" "${flags[@]}"
