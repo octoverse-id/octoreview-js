@@ -30,6 +30,8 @@ jobs:
           "$(go env GOPATH)/bin/actionlint" -color
       - name: Check llms.txt links
         run: make llms-check
+      - name: Prove the release scripts (version-check, check-release-merge, release-notes)
+        run: make release-tooling-check
       - uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
         with:
           node-version: "20"
