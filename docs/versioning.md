@@ -17,6 +17,7 @@ on 20.
 | SDK | Server contract |
 | --- | --- |
 | unreleased (`main`) | `docs/openapi.yaml` at the commit in `testdata/contract/SOURCE` (server `1.0.0-rc.3`, the candidate `0.1.0` ships with) |
+| `0.1.0` | server `1.0.0-rc.3` (`docs/openapi.yaml` at `20aca25`) |
 
 ## The server image CI runs against
 
