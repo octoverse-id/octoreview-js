@@ -1,6 +1,6 @@
 {
   "name": "@octoverse-id/octoreview",
-  "version": "0.1.0-dev",
+  "version": "0.1.0",
   "description": "Official TypeScript SDK for Octoreview: multi-tenant reviews, ratings and review media.",
   "keywords": [
     "octoreview",
