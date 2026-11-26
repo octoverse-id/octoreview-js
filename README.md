@@ -7,8 +7,8 @@ the multi-tenant review and rating service with image and video review media.
 npm install @octoverse-id/octoreview
 ```
 
-TypeScript strict, axios, ESM and CommonJS, Node 20 or newer. No release yet: `0.1.0` ships
-with the server's `1.0.0-rc.3` ([`docs/versioning.md`](docs/versioning.md)).
+TypeScript strict, axios, ESM and CommonJS, Node 20 or newer. `0.1.0` works with the server's
+`1.0.0-rc.3` and `1.0.0-rc.4` ([`docs/versioning.md`](docs/versioning.md)).
 
 ## Usage
 
