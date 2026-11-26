@@ -6,6 +6,7 @@ import {
   type ApiError,
   type ApplicationSettings,
   ErrorCode,
+  NotModifiedError,
   Octoreview,
   type PutSettingsParams,
   UploadError,
@@ -105,6 +106,13 @@ describe.skipIf(!devEnv)("the main flows against a real server", () => {
       null,
       1,
     ]);
+    // The server answers conditional reads from 1.0.0-rc.4 (its spec 5.3). The rating summary's
+    // ETag does not carry the signing epoch, so an unchanged summary always answers 304.
+    const etag = forEntity.meta.etag;
+    expect(etag).toBeTruthy();
+    await expect(
+      c.ratings.forEntity(entity.id, { ifNoneMatch: etag ?? "" }),
+    ).rejects.toBeInstanceOf(NotModifiedError);
     const listed = await c.reviews.list({ entityId: entity.id, hasMedia: true });
     expect(listed.pagination.count).toBe(1);
     expect(listed.items[0]?.media).toHaveLength(2);
